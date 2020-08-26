@@ -14,17 +14,21 @@ Now server/client can send the CSR to the Root CA or the Intermediate CA for sig
 There is a script provided to ease the process of creating the certificates
 
 * To create certificates which are signed by the **Root CA**, just run the command:
+
     `$ ./create_certificate.sh`
 
 * To create certificates which are signed by the **Intermediate CA**, run the command
     with the option **-i**:
+
     `$ ./create_certificate.sh -i`
 
 * To delete all files that this script has created then run the command with the following option:
   * If Intermediate CA is disabled 
+
   `$ ./create_certificate.sh -d`
     
   * If Intermediate CA is enables 
+  
   `$ ./create_certificate.sh -d -i`
 
 ### Root CA
