@@ -1,0 +1,109 @@
+#
+# OpenSSL configuration for the Client.
+#
+
+#
+# This definition doesn't work if HOME isn't defined.
+CA_HOME                 = .
+
+#
+# client 
+[ client ]
+default_client              = client
+
+#
+# client
+[ client ]
+dir                     = $ENV::CA_HOME
+certs                   = $dir/certs
+serial                  = $dir/client.serial
+database                = $dir/client.index
+new_certs_dir           = $dir/newcerts
+certificate             = $dir/client.cert.pem
+private_key             = $dir/private/client.key.pem
+default_days            = 396 # 1 year + 31 days
+crl                     = $dir/crl/client.crl
+crl_dir                 = $dir/crl
+crlnumber               = $dir/client.crlnum
+name_opt                = multiline, align
+cert_opt                = no_pubkey
+copy_extensions         = copy
+crl_extensions          = crl_ext
+default_crl_days        = 30
+default_md              = sha256
+preserve                = no
+email_in_dn             = no
+policy                  = policy
+unique_subject          = no
+
+#
+# Distinguished Name Policy
+[ policy ]
+countryName             = optional
+stateOrProvinceName     = optional
+localityName            = optional
+organizationName        = optional
+organizationalUnitName  = optional
+commonName              = supplied
+
+#
+# Distinguished Name Policy for Personal Certificates
+[ user_policy ]
+countryName             = supplied
+stateOrProvinceName     = optional
+localityName            = supplied
+organizationName        = optional
+organizationalUnitName  = optional
+commonName              = supplied
+emailAddress            = supplied
+#xmppAddr               = optional # Added to SubjAltName by req
+
+#
+# Client request options
+[ req ]
+default_bits            = 4096
+default_keyfile         = private/client.key.pem
+encrypt_key             = no
+default_md              = sha256
+string_mask             = utf8only
+utf8                    = yes
+prompt                  = no
+req_extensions          = req_ext
+distinguished_name      = distinguished_name
+subjectAltName          = subject_alt_name
+
+#
+# client Request Extensions
+[ req_ext ]
+subjectKeyIdentifier    = hash
+subjectAltName          = @subject_alt_name
+
+#
+# Distinguished Name (DN)
+[ distinguished_name ]
+organizationName        = organizationName.net
+commonName              = organizationName.net Client
+
+#
+# CRL Certificate Extensions
+[ crl_ext ]
+authorityKeyIdentifier  = keyid:always
+issuerAltName           = issuer:copy
+
+#
+# Certificate Authorities Alternative Names
+[ subject_alt_name ]
+URI                     = http://ca.organizationName.net/
+email                   = certmaster@organizationName.net
+
+#
+# Certificate download addresses for the client
+[ auth_info_access ]
+caIssuers;URI           = http://ca.organizationName.net/certs/organizationName.net_client.cert.pem
+
+#
+# CRL Download address for the client
+[ crl_dist ]
+fullname                = URI:http://ca.organizationName.net/crl/organizationName.net_client.crl
+
+# EOF

@@ -1,0 +1,145 @@
+#
+# OpenSSL configuration for the Intermediate Certification Authority.
+#
+
+#
+# This definition doesn't work if HOME isn't defined.
+CA_HOME                 = .
+
+#
+# Default Certification Authority
+[ ca ]
+default_ca              = intermediate_ca
+
+#
+# Intermediate Certification Authority
+[ intermediate_ca ]
+dir                     = $ENV::CA_HOME
+certs                   = $dir/certs
+serial                  = $dir/intermediate-ca.serial
+database                = $dir/intermediate-ca.index
+new_certs_dir           = $dir/newcerts
+certificate             = $dir/intermediate-ca.cert.pem
+private_key             = $dir/private/intermediate-ca.key.pem
+default_days            = 396 # 1 year + 31 days
+crl                     = $dir/crl/intermediate-ca.crl
+crl_dir                 = $dir/crl
+crlnumber               = $dir/intermediate-ca.crlnum
+name_opt                = multiline, align
+cert_opt                = no_pubkey
+copy_extensions         = copy
+crl_extensions          = crl_ext
+default_crl_days        = 30
+default_md              = sha256
+preserve                = no
+email_in_dn             = no
+policy                  = policy
+unique_subject          = no
+
+#
+# Distinguished Name Policy
+[ policy ]
+countryName             = optional
+stateOrProvinceName     = optional
+localityName            = optional
+organizationName        = optional
+organizationalUnitName  = optional
+commonName              = supplied
+
+#
+# Distinguished Name Policy for Personal Certificates
+[ user_policy ]
+countryName             = supplied
+stateOrProvinceName     = optional
+localityName            = supplied
+organizationName        = optional
+organizationalUnitName  = optional
+commonName              = supplied
+emailAddress            = supplied
+#xmppAddr               = optional # Added to SubjAltName by req
+
+#
+# Intermediate CA request options
+[ req ]
+default_bits            = 4096
+default_keyfile         = private/intermediate-ca.key.pem
+encrypt_key             = yes
+default_md              = sha256
+string_mask             = utf8only
+utf8                    = yes
+prompt                  = no
+req_extensions          = req_ext
+distinguished_name      = distinguished_name
+subjectAltName          = subject_alt_name
+
+#
+# Intermediate CA Request Extensions
+[ req_ext ]
+subjectKeyIdentifier    = hash
+subjectAltName          = @subject_alt_name
+
+#
+# Distinguished Name (DN)
+[ distinguished_name ]
+organizationName        = organizationName.net
+commonName              = organizationName.net Intermediate Certification Authority
+
+#
+# Server Certificate Extensions
+[ server_ext ]
+basicConstraints        = CA:FALSE
+keyUsage                = critical, digitalSignature, keyEncipherment
+extendedKeyUsage        = critical, serverAuth, clientAuth
+subjectKeyIdentifier    = hash
+authorityKeyIdentifier  = keyid:always
+issuerAltName           = issuer:copy
+authorityInfoAccess     = @auth_info_access
+crlDistributionPoints   = crl_dist
+
+#
+# Client Certificate Extensions
+[ client_ext ]
+basicConstraints        = CA:FALSE
+keyUsage                = critical, digitalSignature
+extendedKeyUsage        = critical, clientAuth
+subjectKeyIdentifier    = hash
+authorityKeyIdentifier  = keyid:always
+issuerAltName           = issuer:copy
+authorityInfoAccess     = @auth_info_access
+crlDistributionPoints   = crl_dist
+
+#
+# User Certificate Extensions
+[ user_ext ]
+basicConstraints        = CA:FALSE
+keyUsage                = critical, digitalSignature
+extendedKeyUsage        = critical, clientAuth, emailProtection
+subjectKeyIdentifier    = hash
+authorityKeyIdentifier  = keyid:always
+issuerAltName           = issuer:copy
+authorityInfoAccess     = @auth_info_access
+crlDistributionPoints   = crl_dist
+
+#
+# CRL Certificate Extensions
+[ crl_ext ]
+authorityKeyIdentifier  = keyid:always
+issuerAltName           = issuer:copy
+
+#
+# Certificate Authorities Alternative Names
+[ subject_alt_name ]
+URI                     = http://ca.organizationName.net/
+email                   = certmaster@organizationName.net
+
+#
+# Certificate download addresses for the intermediate CA
+[ auth_info_access ]
+caIssuers;URI           = http://ca.organizationName.net/certs/organizationName.net_Intermediate_Certification_Authority.cert.pem
+
+#
+# CRL Download address for the intermediate CA
+[ crl_dist ]
+fullname                = URI:http://ca.organizationName.net/crl/organizationName.net_Intermediate_Certification_Authority.crl
+
+# EOF
