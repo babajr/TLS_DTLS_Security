@@ -27,8 +27,8 @@ There is a script provided to ease the process of creating the certificates
 
   `$ ./create_certificate.sh -d`
     
-  * If Intermediate CA is enables 
-  
+  * If Intermediate CA is enabled
+
   `$ ./create_certificate.sh -d -i`
 
 ### Root CA
