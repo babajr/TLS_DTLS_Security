@@ -17,7 +17,7 @@
 
 #define MAXLINE         4096
 #define TRUE            1
-#define dhParamFile     "/home/vijay/Downloads/wolfssl-examples-master/certs/dh2048.pem"
+#define dhParamFile     "./../../Certificates/psk/dh2048.pem"
 #define PSK_KEY_LEN     4
 
 char Usage[] =

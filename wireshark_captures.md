@@ -31,7 +31,7 @@ Figure 2: TCP Server and TCP Client Communication on Loopback IP address in Non-
 Also, we can show communication between TCP Server and TCP Client with TLS Security enabled running on same machine but having different IP addresses with the help of VLAN.
 
 
-**[To be uploaded soon]**
+![Figure 3: TCP Server and TCP Client Communication with two different IP addresses in Blocking Mode with TLS](Images/tls_blocking_vlan.png)
 
 Figure 3: TCP Server and TCP Client Communication with two different IP addresses in Blocking Mode with TLS
 
@@ -64,7 +64,7 @@ Also, we can show communication between UDP Server and UDP Client with DTLS secu
 
 
 
-**[To be uploaded soon]**
+![Figure 7: UDP Server and UDP Client Communication with two different IP addresses in blocking-mode with DTLS](Images/dtls_blocking_vlan.png)
 
 Figure 7: UDP Server and UDP Client Communication with two different IP addresses in blocking-mode with DTLS
 
