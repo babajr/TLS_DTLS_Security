@@ -7,11 +7,15 @@ print_usage()
          by the Root CA."
     echo "-i: Enable Intermediate Certificate Authority. If the user want to sign the server/client 
          certificates by the Intermediate CA, then use this option."
+    echo "-p: To create PSK"
     echo "-d: Deletes all the files created by this script."
 }
 
 #Flag to enable Intermediate CA
 enable_intermediate=0
+
+#Flag to enable PSK 
+enable_psk=0
 
 create_root_ca()
 {
@@ -204,6 +208,11 @@ delete_files()
         rm -r chain_cert
     fi
 
+    if [ $enable_psk = 1 ]; 
+    then
+        rm -r psk
+    fi
+
     cp ./server/README.md /tmp/cert_readme
     rm -r ./server/*
     mv /tmp/cert_readme/README.md ./server/
@@ -215,13 +224,26 @@ delete_files()
     rm -r /tmp/cert_readme
 }
 
-while getopts di flag
+create_psk()
+{
+    mkdir psk
+    cd psk
+
+    openssl dhparam 2048 > dh2048.param
+
+    openssl dhparam -in dh2048.param -text > dh2048.pem
+
+    cd ../
+}
+
+while getopts pdi flag
 do
     case "${flag}" in
         d) delete_files
-            echo "Deleted all files"
+            echo "Deleted all files "
             exit;;
         i) enable_intermediate=1;;
+        p) enable_psk=1;;
         *) print_usage
             exit;;
     esac
@@ -237,4 +259,7 @@ fi
 create_server
 create_client
 
-
+if [ $enable_psk = 1 ]; 
+then
+    create_psk
+fi

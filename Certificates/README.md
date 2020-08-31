@@ -31,6 +31,11 @@ There is a script provided to ease the process of creating the certificates
 
   `$ ./create_certificate.sh -d -i`
 
+  * To create key to use for PSK, run the following command
+
+  `$ ./create_certificate.sh -p`
+  
+
 ### Root CA
 
 To create the Root CA, follow the README.md in the root-ca/ directory.
