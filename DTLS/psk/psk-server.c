@@ -22,7 +22,7 @@
 #define BUFFER_SIZE          	(1<<16)
 #define COOKIE_SECRET_LENGTH 	16
 #define PSK_KEY_LEN          	4
-#define dhParamFile    		 	"/home/vijay/Downloads/wolfssl-examples-master/certs/dh2048.pem"
+#define dhParamFile    		 	"./../../Certificates/psk/dh2048.pem"
 
 unsigned char cookie_secret[COOKIE_SECRET_LENGTH];
 int cookie_initialized=0;
