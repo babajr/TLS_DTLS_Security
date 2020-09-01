@@ -1,3 +1,6 @@
+/*
+* Blocking TLS Client with x509 Certificates example for learning purpose.
+*/
 
 /* the usual suspects */
 #include <stdlib.h>
@@ -102,6 +105,7 @@ int main(int argc, char** argv)
         return 0;
     }
 
+	/* Create a socket for communication */
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) 
     {
         fprintf(stderr, "ERROR: failed to create the socket\n");

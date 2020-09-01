@@ -1,3 +1,6 @@
+/*
+* Blocking TLS Client with PSK example for learning purpose.
+*/
 
 /* the usual suspects */
 #include <stdlib.h>
@@ -18,6 +21,7 @@
 #define PSK_KEY_LEN     4
 #define dhParamFile     "./../../Certificates/psk/dh2048.pem"
 
+/* callback to identify which psk key to use */
 static inline unsigned int My_Psk_Client_Cb(SSL* ssl, const char* hint,
         char* identity, unsigned int id_max_len, unsigned char* key,
         unsigned int key_max_len)
@@ -107,6 +111,7 @@ int main(int argc, char** argv)
         return 0;
     }
 
+	/* Create a socket for communication */
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) 
     {
         fprintf(stderr, "ERROR: failed to create the socket\n");

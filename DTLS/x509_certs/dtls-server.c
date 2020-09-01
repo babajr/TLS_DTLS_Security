@@ -1,3 +1,7 @@
+/*
+* Blocking DTLS Server with x509 certificates example for learning purpose.
+*/
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/time.h>

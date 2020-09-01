@@ -1,4 +1,6 @@
-
+/*
+* Blocking TLS Server with x509 certificates example for learning purpose.
+*/
 /* the usual suspects */
 #include <stdlib.h>
 #include <stdio.h>
@@ -98,13 +100,14 @@ int main()
     ERR_load_BIO_strings();
     OpenSSL_add_ssl_algorithms();
 
-    
+    /* Create SSL CTX context */
     if((ctx = create_context()) == 0)
     {
         printf("Unable to create ctx\n");
         exit(EXIT_FAILURE);
     }
   
+	/* Create a socket for communication */
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) 
     {
         fprintf(stderr, "ERROR: failed to create the socket\n");
@@ -120,7 +123,7 @@ int main()
     servAddr.sin_port        = htons(DEFAULT_PORT); 
     servAddr.sin_addr.s_addr = INADDR_ANY;          
 
-    /* Bind the server socket to our port */
+    /* Bind the server socket to our port i.e. assigning a name to a socket */
     if (bind(sockfd, (struct sockaddr*)&servAddr, sizeof(servAddr)) == -1) 
     {
         fprintf(stderr, "ERROR: failed to bind\n");
@@ -170,7 +173,7 @@ int main()
 
     printf("Client connected successfully\n");
 
-    /* Continue to accept clients until shutdown is issued */
+    /* Continue to accept clients until exit command is issued */
     while (TRUE) 
     {
         /* Read the client data into our buff array */
@@ -195,7 +198,7 @@ int main()
             goto clean_ssl;
         }     
 
-        /* Check for server shutdown command */
+        /* Check for server exit command */
         if (strncmp(buff, "exit", 4) == 0) 
         {
             printf("Exit command issued!\n");

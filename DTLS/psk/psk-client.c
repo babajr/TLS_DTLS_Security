@@ -1,3 +1,7 @@
+/*
+* Blocking DTLS Client with PSK example for learning purpose.
+*/
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -100,6 +104,7 @@ void start_client(char *local_address, int port)
     SSL_CTX_set_verify_depth (ctx, 2);
     SSL_CTX_set_read_ahead(ctx, 1);
 
+	/* Client attempts to make a connection on a socket */
     if (connect(fd, (struct sockaddr *) &local_addr, sizeof(struct sockaddr_in))) 
     {
 	    perror("connect");

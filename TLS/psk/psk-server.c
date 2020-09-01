@@ -1,3 +1,6 @@
+/*
+* Blocking TLS Server with PSK example for learning purpose.
+*/
 
 /* the usual suspects */
 #include <stdlib.h>
@@ -19,6 +22,7 @@
 #define PSK_KEY_LEN 	4
 #define dhParamFile    "./../../Certificates/psk/dh2048.pem"
 
+/* callback to identify which psk key to use */
 static unsigned int my_psk_server_cb(SSL* ssl, const char* identity,
                            unsigned char* key, unsigned int key_max_len)
 {
@@ -37,6 +41,7 @@ static unsigned int my_psk_server_cb(SSL* ssl, const char* identity,
     return PSK_KEY_LEN;
 }
 
+/* Create and set up SSL CTX context */
 SSL_CTX *create_context()
 {
     SSL_CTX* ctx;
@@ -51,6 +56,7 @@ SSL_CTX *create_context()
         goto cleanup;
     }
 
+	/* Use PSK suite for providing security */
     SSL_CTX_set_psk_server_callback(ctx, my_psk_server_cb);
 
     if ((ret = SSL_CTX_use_psk_identity_hint(ctx, "ssl server")) != 1) 
@@ -103,13 +109,14 @@ int main()
     ERR_load_BIO_strings();
     OpenSSL_add_ssl_algorithms();
 
-    
+    /* Create SSL CTX context */
     if((ctx = create_context()) == 0)
     {
         printf("Unable to create ctx\n");
         exit(EXIT_FAILURE);
     }
-  
+
+	/* Create a socket for communication */
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) 
     {
         fprintf(stderr, "ERROR: failed to create the socket\n");
@@ -125,7 +132,7 @@ int main()
     servAddr.sin_port        = htons(DEFAULT_PORT); 
     servAddr.sin_addr.s_addr = INADDR_ANY;          
 
-    /* Bind the server socket to our port */
+    /* Bind the server socket to our port i.e. assigning a name to a socket */
     if (bind(sockfd, (struct sockaddr*)&servAddr, sizeof(servAddr)) == -1) 
     {
         fprintf(stderr, "ERROR: failed to bind\n");
@@ -175,7 +182,7 @@ int main()
 
     printf("Client connected successfully\n");
 
-    /* Continue to accept clients until shutdown is issued */
+    /* Continue to accept clients until exit command is issued */
     while (TRUE) 
     {
         /* Read the client data into our buff array */
@@ -200,7 +207,7 @@ int main()
             goto clean_ssl;
         }     
 
-        /* Check for server shutdown command */
+        /* Check for server exit command */
         if (strncmp(buff, "exit", 4) == 0) 
         {
             printf("Exit command issued!\n");

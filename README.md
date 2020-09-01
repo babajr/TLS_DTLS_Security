@@ -47,5 +47,5 @@ make dtls
 make clean
 ```
 
-Please refer [TLS_DTLS_Security/wireshark_captures.txt](TLS_DTLS_Security/wireshark_captures.txt)
+Please refer [TLS_DTLS_Security/wireshark_captures.md](TLS_DTLS_Security/wireshark_captures.md)
 for wireshark captures.
