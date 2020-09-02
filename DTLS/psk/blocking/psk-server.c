@@ -160,7 +160,7 @@ int verify_cookie(SSL *ssl, const unsigned char *cookie, unsigned int cookie_len
 
 	if (buffer == NULL)
 	{
-    	    printf("out of memory\n");
+    	printf("out of memory\n");
 	    return 0;
 	}
 
@@ -318,7 +318,8 @@ int start_server(int port, char *local_address)
     SSL_CTX_set_psk_server_callback(ctx, my_psk_server_cb);
 
     int ret;
-    if ((ret = SSL_CTX_use_psk_identity_hint(ctx, "ssl server"))!= 1) {
+    if ((ret = SSL_CTX_use_psk_identity_hint(ctx, "ssl server"))!= 1)
+	{
         printf("Fatal error : ctx use psk identity hint returned %d\n", ret);
     }
 

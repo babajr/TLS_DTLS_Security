@@ -171,6 +171,7 @@ void start_client(char *local_address, int port)
             ret = -1;
             goto cleanup;
         }
+        
         len = strnlen(buff, sizeof(buff));
 
         /* Send the message to the server */
