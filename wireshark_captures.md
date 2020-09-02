@@ -33,7 +33,7 @@ Figure 1 and figure 2 shows the message flow between TCP server and TCP client i
 Figure 1: TCP Server and TCP Client Communication on Loopback IP address in Blocking Mode with TLS using x509 certs
 
 
-**[To be uploaded soon]**
+![Figure 2: TCP Server and TCP Client Communication on Loopback IP address in Non-Blocking Mode with TLS using x509 certs](Images/tls_non_blocking.png)
 
 Figure 2: TCP Server and TCP Client Communication on Loopback IP address in Non-Blocking Mode with TLS using x509 certs
 
@@ -45,7 +45,7 @@ Also, we can show communication between TCP Server and TCP Client with TLS Secur
 Figure 3: TCP Server and TCP Client Communication with two different IP addresses in Blocking Mode with TLS using x509 certs
 
 
-**[To be uploaded soon]**
+![Figure 4: TCP Server and TCP Client Communication with two different IP addresses in Non-Blocking Mode with TLS using x509 certs](Images/tls_non_blocking_vlan.png)
 
 Figure 4: TCP Server and TCP Client Communication with two different IP addresses in Non-Blocking Mode with TLS using x509 certs
 
@@ -78,7 +78,7 @@ Figure 7: UDP Server and UDP Client Communication on Loopback IP address in bloc
 
 
 
-**[To be uploaded soon]**
+![Figure 8: UDP Server and UDP Client Communication on Loopback IP address in non-blocking mode with DTLS using x509 certs](Images/dtls_non_blocking.png)
 
 Figure 8: UDP Server and UDP Client Communication on Loopback IP address in non-blocking mode with DTLS using x509 certs
 
@@ -92,7 +92,7 @@ Figure 9: UDP Server and UDP Client Communication with two different IP addresse
 
 
 
-**[To be uploaded soon]**
+![Figure 10: UDP Server and UDP Client Communication with two different IP addresses in non-blocking mode with DTLS using x509 certs](Images/dtls_non_blocking_vlan.png)
 
 Figure 10: UDP Server and UDP Client Communication with two different IP addresses in non-blocking mode with DTLS using x509 certs
 
