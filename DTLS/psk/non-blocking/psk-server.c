@@ -1,7 +1,3 @@
-/*
-* Blocking DTLS Server with PSK example for learning purpose.
-*/
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -12,6 +8,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <fcntl.h>
+#include <sys/file.h>
+#include <errno.h>
 
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
@@ -22,7 +21,7 @@
 #define BUFFER_SIZE          	(1<<16)
 #define COOKIE_SECRET_LENGTH 	16
 #define PSK_KEY_LEN          	4
-#define dhParamFile    		 	"./../../Certificates/psk/dh2048.pem"
+#define dhParamFile    		 	"../../../Certificates/psk/dh2048.pem"
 
 unsigned char cookie_secret[COOKIE_SECRET_LENGTH];
 int cookie_initialized=0;
@@ -164,7 +163,7 @@ int verify_cookie(SSL *ssl, const unsigned char *cookie, unsigned int cookie_len
 
 	if (buffer == NULL)
 	{
-    	    printf("out of memory\n");
+    	printf("out of memory\n");
 	    return 0;
 	}
 
@@ -204,7 +203,7 @@ void* connection_handle(void *info)
 	char addrbuf[INET6_ADDRSTRLEN];
 	struct pass_info *pinfo = (struct pass_info*) info;
 	SSL *ssl = pinfo->ssl;
-	int fd, reading = 0, ret;
+	int fd, reading = 0, ret, flags, error_recv;
     int recvLen;
 	const int on = 1, off = 0;
 	struct timeval timeout;
@@ -217,6 +216,15 @@ void* connection_handle(void *info)
 		goto cleanup;
 	}
 
+	/* non-blocking socket */
+    flags = fcntl(fd, F_GETFL, 0);
+    if(fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
+    {
+        perror("ERROR: failed to set non-blocking");
+        close(fd);
+        exit(EXIT_FAILURE);
+    }
+
 	setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void*) &on, (socklen_t) sizeof(on));
 	
 	if (bind(fd, (const struct sockaddr *) &pinfo->server_addr, sizeof(struct sockaddr_in))) 
@@ -224,10 +232,11 @@ void* connection_handle(void *info)
 		perror("bind");
 		goto cleanup;
 	}
-	if (connect(fd, (struct sockaddr *) &pinfo->client_addr, sizeof(struct sockaddr_in))) 
+
+	while(connect(fd, (struct sockaddr *) &pinfo->client_addr, sizeof(struct sockaddr_in))) 
     {
-		perror("connect");
-		goto cleanup;
+		//perror("connect");
+		//goto cleanup;
 	}
 	printf("connected\n");
 			
@@ -235,26 +244,42 @@ void* connection_handle(void *info)
 	BIO_set_fd(SSL_get_rbio(ssl), fd, BIO_NOCLOSE);
 	BIO_ctrl(SSL_get_rbio(ssl), BIO_CTRL_DGRAM_SET_CONNECTED, 0, &pinfo->client_addr);
 
-	do{ 
-        ret = SSL_accept(ssl); 
-    } while (ret == 0);
-
-	if (ret < 0) 
-	{
-		perror("SSL_accept");
-		printf("%s\n", ERR_error_string(ERR_get_error(), buff));
-		goto cleanup;
-	}
+	while((ret = SSL_accept(ssl)) < 0) 
+    {
+        error_recv = SSL_get_error(ssl, ret);
+        switch(error_recv)
+        {
+            case SSL_ERROR_WANT_READ:
+            case SSL_ERROR_WANT_WRITE:
+                continue;
+				
+            default:
+            {
+                fprintf(stderr, "ERROR: failed to ssl_accept()\n");
+                goto cleanup;
+            }
+        }
+    }
 
 	while (1) 
 	{
 		/* Read the client data into our buff array */
         memset(buff, 0, sizeof(buff));
 
-        if (SSL_read(ssl, buff, sizeof(buff)) == -1) 
+        while((ret = SSL_read(ssl, buff, sizeof(buff))) < 0) 
         {
-            fprintf(stderr, "ERROR: failed to read\n");
-            goto cleanup;
+            error_recv = SSL_get_error(ssl, ret);
+            switch(error_recv)
+            {
+                case SSL_ERROR_WANT_READ:
+                    continue;
+					
+                default:
+                {
+                    fprintf(stderr, "ERROR: failed to read\n");
+                    goto cleanup;
+                }
+            }
         }
 
         /* Print to stdout any data the client sends */
@@ -264,11 +289,21 @@ void* connection_handle(void *info)
         len = strnlen(buff, sizeof(buff));
 
         /* Reply back to the client */
-        if (SSL_write(ssl, buff, len) != len) 
+        while((ret = SSL_write(ssl, buff, len)) != len) 
         {
-            fprintf(stderr, "ERROR: failed to write\n");
-            goto cleanup;
-        }     
+            error_recv = SSL_get_error(ssl, ret);
+            switch(error_recv)
+            {
+                case SSL_ERROR_WANT_WRITE:
+                    continue;
+					
+                default:
+                {
+                    fprintf(stderr, "ERROR: failed to write\n");
+                    goto cleanup;
+                }
+            }
+        }   
 
         /* Check for server shutdown command */
         if (strncmp(buff, "exit", 4) == 0) 
@@ -290,7 +325,7 @@ cleanup:
 
 int start_server(int port, char *local_address) 
 {
-	int fd;
+	int fd, flags;
 	struct sockaddr_in server_addr, client_addr;
 	pthread_t tid;
 	SSL_CTX *ctx;
@@ -329,14 +364,17 @@ int start_server(int port, char *local_address)
     DH *dh_2048 = NULL;
     FILE *paramfile;
     paramfile = fopen(dhParamFile, "r");
+
     if (paramfile) 
     {
       dh_2048 = PEM_read_DHparams(paramfile, NULL, NULL, NULL);
       fclose(paramfile);
     }
+	
     if (SSL_CTX_set_tmp_dh(ctx, dh_2048) != 1) 
     {
         printf("Fatal error: server set temp DH params returned %d\n", ret);
+		return -1;
     }
 
     /* Client has to authenticate */
@@ -352,6 +390,15 @@ int start_server(int port, char *local_address)
 		perror("socket");
 		return -1;
 	}
+
+	/* non-blocking socket */
+    flags = fcntl(fd, F_GETFL, 0);
+    if(fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
+    {
+        perror("ERROR: failed to set non-blocking");
+        close(fd);
+        exit(EXIT_FAILURE);
+    }
 
 	setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void*) &on, (socklen_t) sizeof(on));
 

@@ -1,7 +1,3 @@
-/*
-* Blocking DTLS Server with x509 certificates example for learning purpose.
-*/
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -267,7 +263,6 @@ cleanup:
 	pthread_exit( (void *) NULL );
 }
 
-
 int start_server(int port, char *local_address) 
 {
 	int fd;
@@ -280,9 +275,9 @@ int start_server(int port, char *local_address)
 	struct pass_info *info;
 	const int on = 1, off = 0;
 
-    char caCertLoc[] = "./../../Certificates/root-ca/root-ca.cert.pem";
-    char servCertLoc[] = "./../../Certificates/server/server.cert.pem";
-    char servKeyLoc[] = "./../../Certificates/server/private/server.key.pem";
+    char caCertLoc[] = "../../../Certificates/root-ca/root-ca.cert.pem";
+    char servCertLoc[] = "../../../Certificates/server/server.cert.pem";
+    char servKeyLoc[] = "../../../Certificates/server/private/server.key.pem";
 
 	memset(&server_addr, 0, sizeof(struct sockaddr_in));
 	if (inet_pton(AF_INET, local_address, &server_addr.sin_addr) < 1) 

@@ -1,7 +1,3 @@
-/*
-* Blocking DTLS Client with PSK example for learning purpose.
-*/
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -12,6 +8,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <fcntl.h>
+#include <sys/file.h>
+#include <errno.h>
 
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
@@ -21,7 +20,7 @@
 
 #define MAXLINE         4096
 #define TRUE            1
-#define dhParamFile     "./../../Certificates/psk/dh2048.pem"
+#define dhParamFile     "../../../Certificates/psk/dh2048.pem"
 #define PSK_KEY_LEN     4
 
 char Usage[] =
@@ -58,7 +57,7 @@ void start_client(char *local_address, int port)
 	struct sockaddr_in local_addr;
 	char buff[MAXLINE];
     char recvLine[MAXLINE];
-	int len, ret;
+	int len, ret, flags, error_recv;
 	SSL_CTX *ctx;
 	SSL *ssl;
 	BIO *bio;
@@ -80,6 +79,15 @@ void start_client(char *local_address, int port)
 		exit(-1);
 	}
 
+    /* non-blocking socket */
+    flags = fcntl(fd, F_GETFL, 0);
+    if(fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
+    {
+        perror("ERROR: failed to set non-blocking");
+        close(fd);
+        exit(EXIT_FAILURE);
+    }
+
 	OpenSSL_add_ssl_algorithms();
 	SSL_load_error_strings();
 
@@ -90,21 +98,23 @@ void start_client(char *local_address, int port)
     DH *dh_2048 = NULL;
     FILE *paramfile;
     paramfile = fopen(dhParamFile, "r");
+    
     if (paramfile) 
     {
       dh_2048 = PEM_read_DHparams(paramfile, NULL, NULL, NULL);
       fclose(paramfile);
     }
+
     if (SSL_CTX_set_tmp_dh(ctx, dh_2048) != 1) 
     {
         printf("Fatal error: server set temp DH params returned %d\n", ret);
+        goto cleanup_ctx;
     }
 
     SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
     SSL_CTX_set_verify_depth (ctx, 2);
     SSL_CTX_set_read_ahead(ctx, 1);
 
-	/* Client attempts to make a connection on a socket */
     if (connect(fd, (struct sockaddr *) &local_addr, sizeof(struct sockaddr_in))) 
     {
 	    perror("connect");
@@ -120,10 +130,34 @@ void start_client(char *local_address, int port)
     
     SSL_set_bio(ssl, bio, bio);
     
-    if (SSL_connect(ssl) <= 0) 
+    /* Connect to SSL on the server side */
+    while((ret = SSL_connect(ssl)) != 1) 
     {
-        printf("SSL_connect failed");
-        goto cleanup;
+        error_recv = SSL_get_error(ssl, ret);
+        switch(errno)
+        {
+            case ECONNREFUSED:
+            case EINPROGRESS:
+            case EWOULDBLOCK:
+                continue;
+                break;
+
+            default: 
+                fprintf(stderr, "ERROR: failed to ssl_connect()\n");
+                goto cleanup;
+        }
+        switch(error_recv)
+        {
+            case SSL_ERROR_WANT_READ:
+            case SSL_ERROR_WANT_WRITE:
+                continue;
+                
+            default:
+            {
+                fprintf(stderr, "ERROR: failed to ssl_connect()\n");
+                goto cleanup;
+            }
+        }
     }
 
     while (TRUE) 
@@ -140,19 +174,39 @@ void start_client(char *local_address, int port)
         len = strnlen(buff, sizeof(buff));
 
         /* Send the message to the server */
-        if ((ret = SSL_write(ssl, buff, len)) != len) 
+        while((ret = SSL_write(ssl, buff, len)) != len) 
         {
-            fprintf(stderr, "ERROR: failed to write entire message\n");
-            fprintf(stderr, "%d bytes of %d bytes were sent", ret, (int) len);
-            goto cleanup;
+            error_recv = SSL_get_error(ssl, ret);
+            switch(error_recv)
+            {
+                case SSL_ERROR_WANT_WRITE:
+                    continue;
+                    
+                default:
+                {
+                    fprintf(stderr, "ERROR: failed to write entire message\n");
+                    fprintf(stderr, "%d bytes of %d bytes were sent", ret, (int) len);
+                    goto cleanup;
+                }
+            }
         }
 
         /* Read the server data into our buff array */
         memset(buff, 0, sizeof(buff));
-        if ((ret = SSL_read(ssl, buff, sizeof(buff)-1)) == -1) 
+        while((ret = SSL_read(ssl, buff, sizeof(buff)-1)) < 0) 
         {
-            fprintf(stderr, "ERROR: failed to read\n");
-            goto cleanup;
+            error_recv = SSL_get_error(ssl, ret);
+            switch(error_recv)
+            {
+                case SSL_ERROR_WANT_READ:
+                    continue;
+                    
+                default:
+                {
+                    fprintf(stderr, "ERROR: failed to read\n");
+                    goto cleanup;
+                }
+            }
         }
 
         /* Print to stdout any data the server sends */

@@ -1,6 +1,4 @@
-/*
-* Blocking TLS Server with x509 certificates example for learning purpose.
-*/
+
 /* the usual suspects */
 #include <stdlib.h>
 #include <stdio.h>
@@ -18,14 +16,33 @@
 
 #define DEFAULT_PORT    55000
 #define TRUE            1
+#define PSK_KEY_LEN 	4
+#define dhParamFile    "../../../Certificates/psk/dh2048.pem"
+
+static unsigned int my_psk_server_cb(SSL* ssl, const char* identity,
+                           unsigned char* key, unsigned int key_max_len)
+{
+    (void)ssl;
+    (void)key_max_len;
+
+    if (strncmp(identity, "Client", 7) != 0) {
+        return 0;
+    }
+
+    key[0] = 11;
+    key[1] = 22;
+    key[2] = 33;
+    key[3] = 44;
+
+    return PSK_KEY_LEN;
+}
 
 SSL_CTX *create_context()
 {
     SSL_CTX* ctx;
-
-    char caCertLoc[] = "./../../Certificates/root-ca/root-ca.cert.pem";
-    char servCertLoc[] = "./../../Certificates/server/server.cert.pem";
-    char servKeyLoc[] = "./../../Certificates/server/private/server.key.pem";
+	DH *dh_2048 = NULL;
+    FILE *paramfile = NULL;
+	int ret;
 
     /* Create and initialize SSL_CTX */
     if ((ctx = SSL_CTX_new(TLSv1_2_server_method())) == NULL)
@@ -34,44 +51,30 @@ SSL_CTX *create_context()
         goto cleanup;
     }
 
-    /* Load CA certificates */
-    if (SSL_CTX_load_verify_locations(ctx,caCertLoc,0) != 1)
-    {
-        printf("Error loading %s, please check the file.\n", caCertLoc);
+    SSL_CTX_set_psk_server_callback(ctx, my_psk_server_cb);
+
+    if ((ret = SSL_CTX_use_psk_identity_hint(ctx, "ssl server")) != 1) 
+	{
+        printf("Fatal error : ctx use psk identity hint returned %d\n", ret);
         goto cleanup;
     }
 
-    SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(caCertLoc));
+    paramfile = fopen(dhParamFile, "r");
 
-    /* Load server certificates */
-    if (SSL_CTX_use_certificate_file(ctx, servCertLoc, SSL_FILETYPE_PEM) != 1) 
+    if (paramfile) 
     {
-        printf("Error loading %s, please check the file.\n", servCertLoc);
-        goto cleanup;
+      dh_2048 = PEM_read_DHparams(paramfile, NULL, NULL, NULL);
+      fclose(paramfile);
     }
 
-    /* Load server Keys */
-    if (SSL_CTX_use_PrivateKey_file(ctx, servKeyLoc, SSL_FILETYPE_PEM) != 1)
+    if ((ret = SSL_CTX_set_tmp_dh(ctx, dh_2048)) != 1) 
     {
-        printf("Error loading %s, please check the file.\n", servKeyLoc);
-        goto cleanup;
+        printf("Fatal error: server set temp DH params returned %d\n", ret);
     }
 
-    /* We've loaded both certificate and the key, check if they match */
-    if (SSL_CTX_check_private_key(ctx) != 1) 
-    {
-        printf("Server's certificate and the key don't match\n");
-        goto cleanup;
-    }
-
-    /* We won't handle incomplete read/writes due to renegotiation */
-    SSL_CTX_set_mode(ctx, SSL_MODE_AUTO_RETRY);
-    
-    /* Specify that we need to verify the client as well */
-    SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, NULL);
-
-    /* We accept only certificates signed only by the CA himself */
-    SSL_CTX_set_verify_depth(ctx, 1);
+	SSL_CTX_set_verify(ctx, SSL_VERIFY_CLIENT_ONCE, NULL);
+    SSL_CTX_set_verify_depth (ctx, 2);
+    SSL_CTX_set_read_ahead(ctx, 1);
 
     return ctx;
 
@@ -100,14 +103,13 @@ int main()
     ERR_load_BIO_strings();
     OpenSSL_add_ssl_algorithms();
 
-    /* Create SSL CTX context */
+    
     if((ctx = create_context()) == 0)
     {
         printf("Unable to create ctx\n");
         exit(EXIT_FAILURE);
     }
   
-	/* Create a socket for communication */
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) 
     {
         fprintf(stderr, "ERROR: failed to create the socket\n");
@@ -123,7 +125,7 @@ int main()
     servAddr.sin_port        = htons(DEFAULT_PORT); 
     servAddr.sin_addr.s_addr = INADDR_ANY;          
 
-    /* Bind the server socket to our port i.e. assigning a name to a socket */
+    /* Bind the server socket to our port */
     if (bind(sockfd, (struct sockaddr*)&servAddr, sizeof(servAddr)) == -1) 
     {
         fprintf(stderr, "ERROR: failed to bind\n");
@@ -173,7 +175,7 @@ int main()
 
     printf("Client connected successfully\n");
 
-    /* Continue to accept clients until exit command is issued */
+    /* Continue to accept clients until shutdown is issued */
     while (TRUE) 
     {
         /* Read the client data into our buff array */
@@ -198,7 +200,7 @@ int main()
             goto clean_ssl;
         }     
 
-        /* Check for server exit command */
+        /* Check for server shutdown command */
         if (strncmp(buff, "exit", 4) == 0) 
         {
             printf("Exit command issued!\n");

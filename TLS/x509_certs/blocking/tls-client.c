@@ -1,6 +1,3 @@
-/*
-* Blocking TLS Client with PSK example for learning purpose.
-*/
 
 /* the usual suspects */
 #include <stdlib.h>
@@ -17,64 +14,58 @@
 #include <openssl/bio.h>
 #include <openssl/ssl.h>
 
-#define DEFAULT_PORT    55000
-#define PSK_KEY_LEN     4
-#define dhParamFile     "./../../Certificates/psk/dh2048.pem"
-
-/* callback to identify which psk key to use */
-static inline unsigned int My_Psk_Client_Cb(SSL* ssl, const char* hint,
-        char* identity, unsigned int id_max_len, unsigned char* key,
-        unsigned int key_max_len)
-{
-    (void)ssl;
-    (void)hint;
-    (void)key_max_len;
-
-    /* identity is OpenSSL testing default for openssl s_client, keep same*/
-    strncpy(identity, "Client", id_max_len);
-
-    /* test key n hex is 0x1a2b3c4d , in decimal 439,041,101, we're using
-     * unsigned binary */
-    key[0] = 11;
-    key[1] = 22;
-    key[2] = 33;
-    key[3] = 44;
-
-    return PSK_KEY_LEN;
-}
+#define DEFAULT_PORT 55000
 
 SSL_CTX *create_context()
 {
     SSL_CTX* ctx;
 
-    /* create and initialize WOLFSSL_CTX structure */
+    char caCertLoc[] = "../../../Certificates/root-ca/root-ca.cert.pem";
+    char clientCertLoc[] = "../../../Certificates/client/client.cert.pem";
+    char clientKeyLoc[] = "../../../Certificates/client/private/client.key.pem";
+
+    /* Create and initialize SSL_CTX */
     if ((ctx = SSL_CTX_new(TLSv1_2_client_method())) == NULL) 
     {
-        fprintf(stderr, "wolfSSL_CTX_new error.\n");
+        fprintf(stderr, "ERROR: failed to create SSL_CTX\n");
+        goto cleanup;
+    }
+    /* Load certificates into ctx variable */
+    if (SSL_CTX_load_verify_locations(ctx, caCertLoc, 0) != 1) 
+    {
+        fprintf(stderr, "Error loading %s, please check the file.\n", caCertLoc);
         goto cleanup;
     }
 
-    /* set up pre shared keys */
-    SSL_CTX_set_psk_client_callback(ctx, My_Psk_Client_Cb);
+    /* Load the client's certificate */
+    if (SSL_CTX_use_certificate_file(ctx, clientCertLoc, SSL_FILETYPE_PEM) != 1) 
+    {
+        fprintf(stderr, "Cannot load client's certificate file\n");
+        goto cleanup;
+    }
+
+    /* Load the client's key */
+    if (SSL_CTX_use_PrivateKey_file(ctx, clientKeyLoc, SSL_FILETYPE_PEM) != 1) 
+    {
+        fprintf(stderr, "Cannot load client's key file\n");
+        goto cleanup;
+    }
+
+    /* Verify that the client's certificate and the key match */
+    if (SSL_CTX_check_private_key(ctx) != 1) 
+    {
+        fprintf(stderr, "Client's certificate and key don't match\n");
+        goto cleanup;
+    }
     
-    DH *dh_2048 = NULL;
-    FILE *paramfile;
-    paramfile = fopen(dhParamFile, "r");
-    if (paramfile) 
-    {
-      dh_2048 = PEM_read_DHparams(paramfile, NULL, NULL, NULL);
-      fclose(paramfile);
-    }
-    if (SSL_CTX_set_tmp_dh(ctx, dh_2048) != 1) 
-    {
-        printf("Fatal error: server set temp DH params returned error\n");
-        goto cleanup;
-    }
-
+    /* We won't handle incomplete read/writes due to renegotiation */
     SSL_CTX_set_mode(ctx, SSL_MODE_AUTO_RETRY);
+
+    /* Specify that we need to verify the server's certificate */
     SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
-    SSL_CTX_set_verify_depth (ctx, 2);
-    SSL_CTX_set_read_ahead(ctx, 1);
+
+    /* We accept only certificates signed only by the CA himself */
+    SSL_CTX_set_verify_depth(ctx, 1);
 
     return ctx;
 
@@ -111,7 +102,6 @@ int main(int argc, char** argv)
         return 0;
     }
 
-	/* Create a socket for communication */
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) 
     {
         fprintf(stderr, "ERROR: failed to create the socket\n");

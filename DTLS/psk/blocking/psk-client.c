@@ -1,7 +1,3 @@
-/*
-* Blocking DTLS Client with x509 certificates example for learning purpose.
-*/
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -19,14 +15,38 @@
 #include <openssl/rand.h>
 #include <openssl/opensslv.h>
 
-#define MAXLINE     4096
-#define TRUE        1
+#define MAXLINE         4096
+#define TRUE            1
+#define dhParamFile     "../../../Certificates/psk/dh2048.pem"
+#define PSK_KEY_LEN     4
 
 char Usage[] =
 "Usage: dtls_udp_echo [options] [address]\n"
 "Options:\n"
 "        -L      local address\n"
 "        -p      port (Default: 55000)\n";
+
+
+static inline unsigned int My_Psk_Client_Cb(SSL* ssl, const char* hint,
+        char* identity, unsigned int id_max_len, unsigned char* key,
+        unsigned int key_max_len)
+{
+    (void)ssl;
+    (void)hint;
+    (void)key_max_len;
+
+    /* identity is OpenSSL testing default for openssl s_client, keep same*/
+    strncpy(identity, "Client", id_max_len);
+
+    /* test key n hex is 0x1a2b3c4d , in decimal 439,041,101, we're using
+     * unsigned binary */
+    key[0] = 11;
+    key[1] = 22;
+    key[2] = 33;
+    key[3] = 44;
+
+    return PSK_KEY_LEN;
+}
 
 void start_client(char *local_address, int port) 
 {
@@ -38,10 +58,6 @@ void start_client(char *local_address, int port)
 	SSL_CTX *ctx;
 	SSL *ssl;
 	BIO *bio;
-
-    char caCertLoc[] = "./../../Certificates/root-ca/root-ca.cert.pem";
-    char clientCertLoc[] = "./../../Certificates/client/client.cert.pem";
-    char clientKeyLoc[] = "./../../Certificates/client/private/client.key.pem";
 
 	memset(&local_addr, 0, sizeof(struct sockaddr_in));
 
@@ -65,33 +81,24 @@ void start_client(char *local_address, int port)
 
 	ctx = SSL_CTX_new(DTLS_client_method());
 	/* Load certificates into ctx variable */
-    if (SSL_CTX_load_verify_locations(ctx, caCertLoc, 0) != 1)
-    { 
-        printf("\nError: please check the file!");
-        goto cleanup_ctx;
+    SSL_CTX_set_psk_client_callback(ctx, My_Psk_Client_Cb);
+
+    DH *dh_2048 = NULL;
+    FILE *paramfile;
+    paramfile = fopen(dhParamFile, "r");
+    if (paramfile) 
+    {
+      dh_2048 = PEM_read_DHparams(paramfile, NULL, NULL, NULL);
+      fclose(paramfile);
+    }
+    if (SSL_CTX_set_tmp_dh(ctx, dh_2048) != 1) 
+    {
+        printf("Fatal error: server set temp DH params returned %d\n", ret);
     }
 
-	if (SSL_CTX_use_certificate_file(ctx, clientCertLoc, SSL_FILETYPE_PEM) != 1)
-	{
-       	printf("\nERROR: no certificate found!");
-        goto cleanup_ctx;
-    }
-	if (SSL_CTX_use_PrivateKey_file(ctx, clientKeyLoc, SSL_FILETYPE_PEM) != 1)
-	{
-    	printf("\nERROR: no private key found!");
-        goto cleanup_ctx;
-    }
-
-	if (SSL_CTX_check_private_key (ctx) != 1)
-	{
-        printf("\nERROR: invalid private key!");
-        goto cleanup_ctx;
-    }
-
-	SSL_CTX_set_mode(ctx, SSL_MODE_AUTO_RETRY);
-	SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
-	SSL_CTX_set_verify_depth (ctx, 2);
-	SSL_CTX_set_read_ahead(ctx, 1);
+    SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
+    SSL_CTX_set_verify_depth (ctx, 2);
+    SSL_CTX_set_read_ahead(ctx, 1);
 
     if (connect(fd, (struct sockaddr *) &local_addr, sizeof(struct sockaddr_in))) 
     {
